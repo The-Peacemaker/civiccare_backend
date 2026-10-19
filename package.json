@@ -1,12 +1,13 @@
 {
-  "name": "backend",
+  "name": "civiccare-backend",
   "version": "1.0.0",
-  "description": "",
+  "description": "CivicCare backend - anonymous incident reporting API (Express + MongoDB)",
   "main": "src/server.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "seed": "node src/seed/seed.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
   "author": "",

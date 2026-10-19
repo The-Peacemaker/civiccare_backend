@@ -1,24 +1,34 @@
 import { Router } from "express";
+import * as complaintController from "../controller/complaintController.js";
+import * as commentController from "../controller/commentController.js";
+import { requireAuth } from "../middlewares/auth.js";
 import {
-  createComplaint,
-  getComplaints,
-  getComplaintById,
-  updateComplaint,
-  deleteComplaint,
-  upvoteComplaint,
-} from "../controller/complaintController.js";
-import { validateComplaint } from "../middlewares/validateComplaint.js";
+  validateComplaint,
+  validateComplaintUpdate,
+  validateComment,
+} from "../middlewares/validateComplaint.js";
 
 const router = Router();
 
-// POST /api/complaints       -> report a new issue (anonymous allowed)
-// GET  /api/complaints       -> public feed (?status=&category=&page=&limit=)
-router.route("/").post(validateComplaint, createComplaint).get(getComplaints);
+// Public feed. Optional auth adds `hasUpvoted` per item.
+// POST is anonymous-friendly: identity is stored, never exposed.
+router
+  .route("/")
+  .get(complaintController.getComplaints)
+  .post(requireAuth, validateComplaint, complaintController.createComplaint);
 
-// GET /api/complaints/:id | PATCH /api/complaints/:id | DELETE /api/complaints/:id
-router.route("/:id").get(getComplaintById).patch(updateComplaint).delete(deleteComplaint);
+router.get("/:id/history", complaintController.getComplaintHistory);
+router.post("/:id/upvote", requireAuth, complaintController.toggleUpvote);
 
-// POST /api/complaints/:id/upvote -> +1 upvote
-router.post("/:id/upvote", upvoteComplaint);
+router
+  .route("/:id/comments")
+  .get(commentController.listComments)
+  .post(requireAuth, validateComment, commentController.addComment);
+
+router
+  .route("/:id")
+  .get(complaintController.getComplaintById)
+  .patch(requireAuth, validateComplaintUpdate, complaintController.updateComplaint)
+  .delete(requireAuth, complaintController.deleteComplaint);
 
 export default router;
