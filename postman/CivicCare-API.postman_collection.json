@@ -1,0 +1,90 @@
+{
+  "info": {
+    "name": "CivicCare API",
+    "description": "Demo collection for college review — anonymous incident reporting (MERN backend). Import into Postman, run in order 1 → 8.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:5000" },
+    { "key": "complaintId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "0 - Health check",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/health" }
+    },
+    {
+      "name": "1 - Report complaint (anonymous)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/complaints",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Pothole on MG Road\",\n  \"description\": \"Large pothole causing accidents near bus stop\",\n  \"category\": \"road\",\n  \"location\": \"MG Road, Kochi\",\n  \"isAnonymous\": true\n}"
+        }
+      },
+      "event": [
+        {
+          "listen": "test",
+          "script": {
+            "exec": [
+              "const j = pm.response.json();",
+              "if (j.data && j.data._id) pm.collectionVariables.set('complaintId', j.data._id);"
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "2 - Report complaint (with name)",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/complaints",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"title\": \"Streetlight not working\",\n  \"description\": \"Streetlight off for 5 days, area unsafe at night\",\n  \"category\": \"electricity\",\n  \"location\": \"Kakkanad, Kochi\",\n  \"isAnonymous\": false,\n  \"reportedBy\": \"Demo Student\"\n}"
+        }
+      }
+    },
+    {
+      "name": "3 - List all complaints",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/complaints?limit=10" }
+    },
+    {
+      "name": "4 - Filter by status",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/complaints?status=pending" }
+    },
+    {
+      "name": "5 - Get one complaint",
+      "request": { "method": "GET", "url": "{{baseUrl}}/api/complaints/{{complaintId}}" }
+    },
+    {
+      "name": "6 - Update status",
+      "request": {
+        "method": "PATCH",
+        "url": "{{baseUrl}}/api/complaints/{{complaintId}}",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"status\": \"in-progress\"\n}" }
+      }
+    },
+    {
+      "name": "7 - Upvote",
+      "request": { "method": "POST", "url": "{{baseUrl}}/api/complaints/{{complaintId}}/upvote" }
+    },
+    {
+      "name": "8 - Delete",
+      "request": { "method": "DELETE", "url": "{{baseUrl}}/api/complaints/{{complaintId}}" }
+    },
+    {
+      "name": "9 - Validation fail demo",
+      "request": {
+        "method": "POST",
+        "url": "{{baseUrl}}/api/complaints",
+        "header": [{ "key": "Content-Type", "value": "application/json" }],
+        "body": { "mode": "raw", "raw": "{\n  \"description\": \"missing title and location\"\n}" }
+      }
+    }
+  ]
+}
