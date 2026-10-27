@@ -1,5 +1,6 @@
 import {
   isKnownCategory,
+  isKnownPriority,
   isKnownStatus,
   normalizeCategory,
   normalizeStatus,
@@ -25,7 +26,7 @@ export const validateComplaint = (req, res, next) => {
   if (body.category !== undefined && !isKnownCategory(body.category)) {
     errors.push("category is invalid");
   }
-  if (body.priority !== undefined && !["low", "medium", "high"].includes(body.priority)) {
+  if (body.priority !== undefined && !isKnownPriority(body.priority)) {
     errors.push("priority must be low, medium or high");
   }
   if (body.imageUrls !== undefined && !Array.isArray(body.imageUrls)) {
@@ -55,7 +56,7 @@ export const validateComplaintUpdate = (req, res, next) => {
   if (body.status !== undefined && !isKnownStatus(body.status)) {
     errors.push("status is invalid");
   }
-  if (body.priority !== undefined && !["low", "medium", "high"].includes(body.priority)) {
+  if (body.priority !== undefined && !isKnownPriority(body.priority)) {
     errors.push("priority must be low, medium or high");
   }
   if (body.imageUrls !== undefined && !Array.isArray(body.imageUrls)) {

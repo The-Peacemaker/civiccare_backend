@@ -18,9 +18,17 @@ export const toPublicComplaint = (doc) => {
     status: c.status,
     priority: c.priority,
     location: c.location,
+    locationText: c.location?.text || "",
+    coords: {
+      lat: c.location?.latitude ?? null,
+      lng: c.location?.longitude ?? null,
+    },
     imageUrls: c.imageUrls || [],
     upvoteCount: c.upvoteCount || 0,
     commentCount: c.commentCount || 0,
+    // Frontend-friendly aliases (feed cards use likes/comments).
+    likes: c.upvoteCount || 0,
+    comments: c.commentCount || 0,
     isAnonymous: hidden,
     author: hidden
       ? {

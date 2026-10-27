@@ -15,16 +15,23 @@ export const CATEGORIES = [
 export const CATEGORY_ALIASES = {
   bribe: "corruption",
   bribery: "corruption",
+  "bribery/corruption": "corruption",
+  "bribe/corruption": "corruption",
   road: "infrastructure",
   roads: "infrastructure",
   pothole: "infrastructure",
   potholes: "infrastructure",
+  "road/pothole": "infrastructure",
+  "roads/potholes": "infrastructure",
+  infrastructure: "infrastructure",
   waste: "sanitation",
   garbage: "sanitation",
   trash: "sanitation",
+  "waste management": "sanitation",
   streetlight: "electricity",
   streetlights: "electricity",
   power: "electricity",
+  "water supply": "water",
 };
 
 export const STATUSES = ["pending", "in-progress", "resolved", "rejected"];
@@ -33,6 +40,7 @@ export const STATUS_ALIASES = {
   open: "pending",
   inprogress: "in-progress",
   in_progress: "in-progress",
+  "in progress": "in-progress",
   ongoing: "in-progress",
   closed: "resolved",
   done: "resolved",
@@ -66,4 +74,14 @@ export const isKnownCategory = (value) => {
 export const isKnownStatus = (value) => {
   const key = String(value || "").toLowerCase().trim();
   return STATUSES.includes(key) || Boolean(STATUS_ALIASES[key]);
+};
+
+export const normalizePriority = (value) => {
+  const key = String(value || "").toLowerCase().trim();
+  return PRIORITIES.includes(key) ? key : "medium";
+};
+
+export const isKnownPriority = (value) => {
+  const key = String(value || "").toLowerCase().trim();
+  return PRIORITIES.includes(key);
 };

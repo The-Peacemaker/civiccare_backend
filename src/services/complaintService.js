@@ -5,9 +5,10 @@ import * as statusHistoryRepo from "../repositories/statusHistoryRepository.js";
 import { toAdminComplaint, toPublicComplaint } from "../serializers/complaintSerializer.js";
 import { notifyStatusChange } from "./notificationService.js";
 import {
-  PRIORITIES,
   STAFF_ROLES,
+  isKnownPriority,
   normalizeCategory,
+  normalizePriority,
   normalizeStatus,
 } from "../config/constants.js";
 
@@ -19,18 +20,33 @@ const httpError = (statusCode, message) => {
 
 const escapeRegex = (value) => String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 
-// Accepts `location` as a plain string or as an object from the Post form.
-const normalizeLocation = (location) => {
-  if (typeof location === "string") return { text: location.trim() };
-  if (location && typeof location === "object") {
-    return {
-      text: String(location.text || location.label || "").trim(),
-      district: String(location.district || "").trim(),
-      latitude: Number.isFinite(Number(location.latitude)) ? Number(location.latitude) : null,
-      longitude: Number.isFinite(Number(location.longitude)) ? Number(location.longitude) : null,
-    };
+// Accepts `location` as a plain string or as an object from the Post form,
+// plus an optional `coords` object ({lat,lng}) from the report modal.
+const normalizeLocation = (location, coords) => {
+  const out = { text: "", district: "", latitude: null, longitude: null };
+  if (typeof location === "string") {
+    out.text = location.trim();
+  } else if (location && typeof location === "object") {
+    out.text = String(location.text || location.label || "").trim();
+    out.district = String(location.district || "").trim();
+    out.latitude = Number.isFinite(Number(location.latitude)) ? Number(location.latitude) : null;
+    out.longitude = Number.isFinite(Number(location.longitude)) ? Number(location.longitude) : null;
   }
-  return { text: "" };
+  const lat = coords?.lat ?? coords?.latitude;
+  const lng = coords?.lng ?? coords?.lon ?? coords?.longitude;
+  if (Number.isFinite(Number(lat))) out.latitude = Number(lat);
+  if (Number.isFinite(Number(lng))) out.longitude = Number(lng);
+  return out;
+};
+
+// Accepts imageUrls[] or a single image/photo URL string from older clients.
+const collectImages = (payload) => {
+  if (Array.isArray(payload.imageUrls)) {
+    return payload.imageUrls.filter(Boolean).map(String).slice(0, 10);
+  }
+  const single = payload.imageUrl || payload.image || payload.photo;
+  if (typeof single === "string" && single.trim()) return [single.trim()];
+  return [];
 };
 
 const buildFilter = (query) => {
@@ -42,8 +58,8 @@ const buildFilter = (query) => {
   if (query.status && query.status !== "all") {
     filter.status = normalizeStatus(query.status);
   }
-  if (query.priority && ["low", "medium", "high"].includes(query.priority)) {
-    filter.priority = query.priority;
+  if (query.priority && isKnownPriority(query.priority)) {
+    filter.priority = normalizePriority(query.priority);
   }
   if (query.district) {
     filter["location.district"] = new RegExp(`^${escapeRegex(query.district)}$`, "i");
@@ -76,14 +92,12 @@ export const createComplaint = async (payload, user) => {
     title: String(payload.title).trim(),
     description: String(payload.description).trim(),
     category: normalizeCategory(payload.category),
-    location: normalizeLocation(payload.location),
-    priority: PRIORITIES.includes(payload.priority) ? payload.priority : "medium",
+    location: normalizeLocation(payload.location, payload.coords || payload.coordinates),
+    priority: normalizePriority(payload.priority),
     author: user._id,
     // Guests can never be publicly identified; logged-in users choose.
     isAnonymous: isGuest ? true : payload.isAnonymous !== false,
-    imageUrls: Array.isArray(payload.imageUrls)
-      ? payload.imageUrls.filter(Boolean).map(String).slice(0, 10)
-      : [],
+    imageUrls: collectImages(payload),
   };
 
   const complaint = await complaintRepo.create(data);
@@ -114,6 +128,7 @@ export const listComplaints = async (query, currentUser) => {
     items.map(async (item) => {
       const data = toPublicComplaint(item);
       data.hasUpvoted = await upvoteRepo.stateForUser(item._id, currentUser?._id);
+      data.liked = data.hasUpvoted;
       return data;
     })
   );
@@ -139,6 +154,7 @@ export const getComplaint = async (id, currentUser) => {
   if (!complaint) return null;
   const data = toPublicComplaint(complaint);
   data.hasUpvoted = await upvoteRepo.stateForUser(id, currentUser?._id);
+  data.liked = data.hasUpvoted;
   return data;
 };
 
@@ -164,13 +180,15 @@ export const updateComplaint = async (id, payload, user) => {
   if (payload.title !== undefined) data.title = String(payload.title).trim();
   if (payload.description !== undefined) data.description = String(payload.description).trim();
   if (payload.category !== undefined) data.category = normalizeCategory(payload.category);
-  if (payload.location !== undefined) data.location = normalizeLocation(payload.location);
-  if (payload.imageUrls !== undefined && Array.isArray(payload.imageUrls)) {
-    data.imageUrls = payload.imageUrls.filter(Boolean).map(String).slice(0, 10);
+  if (payload.location !== undefined || payload.coords !== undefined || payload.coordinates !== undefined) {
+    data.location = normalizeLocation(payload.location, payload.coords || payload.coordinates);
+  }
+  if (payload.imageUrls !== undefined || payload.image !== undefined || payload.photo !== undefined) {
+    data.imageUrls = collectImages(payload);
   }
   if (payload.priority !== undefined) {
     if (!isStaff) throw httpError(403, "Only staff can change priority");
-    if (PRIORITIES.includes(payload.priority)) data.priority = payload.priority;
+    data.priority = normalizePriority(payload.priority);
   }
   // Owners of a non-guest account may toggle their public anonymity.
   if (payload.isAnonymous !== undefined && !complaint.author?.isGuest) {
