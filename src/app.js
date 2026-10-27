@@ -3,6 +3,11 @@ import cors from "cors";
 import complaintRoutes from "./routes/complaintRoutes.js";
 import commentRoutes from "./routes/commentRoutes.js";
 import adminRoutes from "./routes/adminRoutes.js";
+import statsRoutes from "./routes/statsRoutes.js";
+import communityRoutes from "./routes/communityRoutes.js";
+import resourceRoutes from "./routes/resourceRoutes.js";
+import notificationRoutes from "./routes/notificationRoutes.js";
+import * as statsController from "./controller/statsController.js";
 import { resolveCurrentUser } from "./middlewares/auth.js";
 import { notFound, errorHandler } from "./middlewares/validateComplaint.js";
 
@@ -29,6 +34,13 @@ app.get("/api/health", (req, res) => {
 app.use("/api/complaints", complaintRoutes);
 app.use("/api/comments", commentRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/stats", statsRoutes);
+app.use("/api/communities", communityRoutes);
+app.use("/api/resources", resourceRoutes);
+app.use("/api/notifications", notificationRoutes);
+
+// Map pins alias for the map screen.
+app.get("/api/map/pins", statsController.getMapPins);
 
 // 404 + central error handler (must be last)
 app.use(notFound);
