@@ -17,3 +17,21 @@ export const getMapPins = async (req, res, next) => {
     next(err);
   }
 };
+
+export const getEngagement = async (req, res, next) => {
+  try {
+    const data = await statsService.getEngagement(req.query);
+    res.status(200).json({ success: true, data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getDistricts = async (req, res, next) => {
+  try {
+    const items = await statsService.getDistricts();
+    res.status(200).json({ success: true, total: items.length, items });
+  } catch (err) {
+    next(err);
+  }
+};

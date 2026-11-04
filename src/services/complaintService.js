@@ -3,7 +3,12 @@ import * as commentRepo from "../repositories/commentRepository.js";
 import * as upvoteRepo from "../repositories/upvoteRepository.js";
 import * as statusHistoryRepo from "../repositories/statusHistoryRepository.js";
 import { toAdminComplaint, toPublicComplaint } from "../serializers/complaintSerializer.js";
-import { notifyStatusChange } from "./notificationService.js";
+import {
+  deleteByComplaint as deleteNotificationsByComplaint,
+  notifyAssignment,
+  notifyStatusChange,
+  notifyUpvote,
+} from "./notificationService.js";
 import {
   STAFF_ROLES,
   isKnownPriority,
@@ -66,7 +71,10 @@ const buildFilter = (query) => {
   }
   if (query.q) {
     const rx = new RegExp(escapeRegex(query.q).slice(0, 100), "i");
-    filter.$or = [{ title: rx }, { description: rx }];
+    filter.$or = [{ title: rx }, { description: rx }, { "location.text": rx }];
+  }
+  if (query.location) {
+    filter["location.text"] = new RegExp(escapeRegex(query.location).slice(0, 100), "i");
   }
   return filter;
 };
@@ -109,7 +117,7 @@ export const createComplaint = async (payload, user) => {
     note: "Report created",
   });
 
-  return toPublicComplaint(await complaintRepo.findById(complaint._id));
+  return toPublicComplaint(await complaintRepo.findById(complaint._id), user._id);
 };
 
 export const listComplaints = async (query, currentUser) => {
@@ -126,7 +134,7 @@ export const listComplaints = async (query, currentUser) => {
 
   const serialized = await Promise.all(
     items.map(async (item) => {
-      const data = toPublicComplaint(item);
+      const data = toPublicComplaint(item, currentUser?._id);
       data.hasUpvoted = await upvoteRepo.stateForUser(item._id, currentUser?._id);
       data.liked = data.hasUpvoted;
       return data;
@@ -152,7 +160,7 @@ export const listAdminComplaints = async (query) => {
 export const getComplaint = async (id, currentUser) => {
   const complaint = await complaintRepo.findById(id);
   if (!complaint) return null;
-  const data = toPublicComplaint(complaint);
+  const data = toPublicComplaint(complaint, currentUser?._id);
   data.hasUpvoted = await upvoteRepo.stateForUser(id, currentUser?._id);
   data.liked = data.hasUpvoted;
   return data;
@@ -196,6 +204,7 @@ export const updateComplaint = async (id, payload, user) => {
   }
 
   const oldStatus = complaint.status;
+  const oldAssignedTo = complaint.assignedTo?._id || complaint.assignedTo || null;
   let statusChanged = false;
 
   if (payload.status !== undefined) {
@@ -225,7 +234,12 @@ export const updateComplaint = async (id, payload, user) => {
     await notifyStatusChange({ complaint: updated, actor: user, oldStatus, newStatus: data.status });
   }
 
-  return isStaff ? toAdminComplaint(updated) : toPublicComplaint(updated);
+  const newAssignedTo = updated.assignedTo?._id || updated.assignedTo || null;
+  if (newAssignedTo && String(newAssignedTo) !== String(oldAssignedTo) && updated.assignedTo) {
+    await notifyAssignment({ complaint: updated, actor: user });
+  }
+
+  return isStaff ? toAdminComplaint(updated, user?._id) : toPublicComplaint(updated, user?._id);
 };
 
 export const deleteComplaint = async (id, user) => {
@@ -241,6 +255,7 @@ export const deleteComplaint = async (id, user) => {
     commentRepo.deleteByComplaint(id),
     upvoteRepo.deleteByComplaint(id),
     statusHistoryRepo.deleteByComplaint(id),
+    deleteNotificationsByComplaint(id),
   ]);
 
   return toAdminComplaint(complaint);
@@ -264,5 +279,19 @@ export const toggleUpvote = async (id, user) => {
   }
 
   const fresh = await complaintRepo.findById(id);
-  return { upvoted, upvoteCount: fresh.upvoteCount };
+  if (upvoted) await notifyUpvote({ complaint: fresh, actor: user });
+  return { upvoted, upvoteCount: fresh.upvoteCount, likes: fresh.upvoteCount };
+};
+
+export const shareComplaint = async (id) => {
+  const complaint = await complaintRepo.findById(id);
+  if (!complaint) return null;
+
+  await complaintRepo.incrementCounter(id, "shareCount", 1);
+  const fresh = await complaintRepo.findById(id);
+  return {
+    shareCount: fresh.shareCount,
+    shares: fresh.shareCount,
+    total: (fresh.upvoteCount || 0) + (fresh.commentCount || 0) + (fresh.shareCount || 0),
+  };
 };

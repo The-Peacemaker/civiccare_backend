@@ -70,6 +70,17 @@ export const toggleUpvote = async (req, res, next) => {
   }
 };
 
+export const shareComplaint = async (req, res, next) => {
+  try {
+    if (!isValidId(req.params.id)) return invalidId(res);
+    const data = await complaintService.shareComplaint(req.params.id);
+    if (!data) return res.status(404).json({ success: false, message: "Complaint not found" });
+    res.status(200).json({ success: true, message: "Share recorded", data });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const getComplaintHistory = async (req, res, next) => {
   try {
     if (!isValidId(req.params.id)) return invalidId(res);

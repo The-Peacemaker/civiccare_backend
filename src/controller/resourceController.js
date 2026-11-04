@@ -33,3 +33,25 @@ export const create = async (req, res, next) => {
     next(err);
   }
 };
+
+export const update = async (req, res, next) => {
+  try {
+    if (!isValidId(req.params.id)) return invalidId(res);
+    const data = await resourceService.updateResource(req.params.id, req.body, req.user);
+    if (!data) return res.status(404).json({ success: false, message: "Resource not found" });
+    res.status(200).json({ success: true, message: "Resource updated", data });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const remove = async (req, res, next) => {
+  try {
+    if (!isValidId(req.params.id)) return invalidId(res);
+    const data = await resourceService.deleteResource(req.params.id, req.user);
+    if (!data) return res.status(404).json({ success: false, message: "Resource not found" });
+    res.status(200).json({ success: true, message: "Resource deleted", data });
+  } catch (err) {
+    next(err);
+  }
+};

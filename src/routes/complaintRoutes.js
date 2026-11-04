@@ -19,6 +19,7 @@ router
 
 router.get("/:id/history", complaintController.getComplaintHistory);
 router.post("/:id/upvote", requireAuth, complaintController.toggleUpvote);
+router.post("/:id/share", complaintController.shareComplaint);
 
 router
   .route("/:id/comments")

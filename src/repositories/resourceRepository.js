@@ -12,3 +12,11 @@ export const findAll = (
 export const countAll = (filter = {}) => Resource.countDocuments(filter);
 
 export const findById = (id) => Resource.findById(id).populate(POPULATE);
+
+export const updateById = (id, data) =>
+  Resource.findByIdAndUpdate(id, data, {
+    returnDocument: "after",
+    runValidators: true,
+  }).populate(POPULATE);
+
+export const deleteById = (id) => Resource.findByIdAndDelete(id);

@@ -16,19 +16,27 @@ export const countAll = (filter = {}) => Community.countDocuments(filter);
 
 export const findById = (id) => Community.findById(id).populate(POPULATE);
 
+export const updateById = (id, data) =>
+  Community.findByIdAndUpdate(id, data, {
+    returnDocument: "after",
+    runValidators: true,
+  }).populate(POPULATE);
+
+export const deleteById = (id) => Community.findByIdAndDelete(id);
+
 export const findOneByName = (name) =>
   Community.findOne({ name: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`, "i") });
 
 export const addMember = (id, userId) =>
   Community.findByIdAndUpdate(
     id,
-    { $addToSet: { members: userId }, $inc: { memberCount: 1 } },
+    { $addToSet: { members: userId } },
     { returnDocument: "after" }
   ).populate(POPULATE);
 
 export const removeMember = (id, userId) =>
   Community.findByIdAndUpdate(
     id,
-    { $pull: { members: userId }, $inc: { memberCount: -1 } },
+    { $pull: { members: userId } },
     { returnDocument: "after" }
   ).populate(POPULATE);

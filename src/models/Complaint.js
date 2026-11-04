@@ -72,6 +72,11 @@ const complaintSchema = new mongoose.Schema(
       default: 0,
       min: 0,
     },
+    shareCount: {
+      type: Number,
+      default: 0,
+      min: 0,
+    },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
